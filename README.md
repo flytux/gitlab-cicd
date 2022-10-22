@@ -17,6 +17,7 @@ $ chmod 755 rke_linux-amd64 && sudo mv rke_linux-amd64 /usr/local/bin/rke
 
 # RKE cluster install
 $ rke config
+$ rke up
    
 # Install kubectl / helm   
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
