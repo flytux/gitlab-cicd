@@ -54,7 +54,8 @@ $ helm install gitlab gitlab/gitlab \
   --set certmanager.install=false \
   --set global.ingress.configureCertmanager=false \
   --set nginx-ingress.enabled=false \
-  --set gitlab-runner.install=false
+  --set gitlab-runner.install=false \
+  --create-namespace -n gitlab
 ~~~
 
 ### 4. install argocd
