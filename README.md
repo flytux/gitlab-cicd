@@ -54,9 +54,9 @@ $ helm repo add gitlab https://charts.gitlab.io/
 $ helm upgrade -i gitlab gitlab/gitlab \
   --set global.hosts.domain=vm01 \
   --set certmanager.install=false \
-  --set certmanager-issuer.email=jaehoon.jung@kubeworks.net \
+  --set global.ingress.configureCertmanager=false \
   --set nginx-ingress.enabled=false \
-  --set global.ingress.annotations."kubernetes\.io/tls-acme"=true \
+  --set gitlab-runner.install=false
   --create-namespace -n gitlab
 
 $ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
