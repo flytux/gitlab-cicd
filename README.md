@@ -50,13 +50,25 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 
 # Install gitlab
 $ helm repo add gitlab https://charts.gitlab.io/
-$ helm install gitlab gitlab/gitlab \
+  
+$ helm upgrade -i gitlab gitlab/gitlab \
   --set global.hosts.domain=vm01 \
   --set certmanager.install=false \
-  --set global.ingress.configureCertmanager=false \
+  --set certmanager-issuer.email=jaehoon.jung@kubeworks.net \
   --set nginx-ingress.enabled=false \
-  --set gitlab-runner.install=false \
+  --set global.ingress.annotations."kubernetes\.io/tls-acme"=true
   --create-namespace -n gitlab
+
+$ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
+
+$ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
+
+$ helm upgrade -i gitlab-runner gitlab/gitlab-runner \
+  --set gitlabUrl=https://gitlab.vm01 \
+  --set runnerRegistrationToken=GR1348941Cz7uxKkss2xoTd-VH_FS \
+  --set rbac.create=true \
+  --set certsSecretName=gitlab-runner-tls
+ 
 ~~~
 
 ### 4. install argocd
