@@ -50,7 +50,7 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 # Install gitlab
 $ helm repo add gitlab https://charts.gitlab.io/
 $ helm install gitlab gitlab/gitlab \
-  --set hosts.domain=vm01 \
+  --set global.hosts.domain=vm01 \
   --set certmanager.install=false \
   --set global.ingress.configureCertmanager=false \
   --set nginx-ingress.enabled=false \
