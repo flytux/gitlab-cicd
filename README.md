@@ -49,10 +49,12 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 
 # Install gitlab
 $ helm repo add gitlab https://charts.gitlab.io/
-$ helm fetch gitlab/gitlab --untar
-# delete cert-manager / cert-manager-issuer from requirements
-# delete cert-manager charts 
-# cert-manager / promethues install : false
+$ helm install gitlab gitlab/gitlab \
+  --set hosts.domain=vm01 \
+  --set certmanager.install=false \
+  --set global.ingress.configureCertmanager=false \
+  --set nginx-ingress.enabled=false \
+  --set gitlab-runner.install=false
 ~~~
 
 ### 4. install argocd
