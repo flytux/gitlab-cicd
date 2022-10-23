@@ -5,8 +5,8 @@
 
 ~~~
 # Install Docker
-$ curl -fsSL https://test.docker.com -o test-docker.sh
-$ sudo sh test-docker.sh
+$ curl -fsSL https://get.docker.com -o get-docker.sh
+$ sudo sh get-docker.sh
 
 # Install user key
 $ ssh-keygen
