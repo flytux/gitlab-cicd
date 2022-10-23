@@ -61,6 +61,51 @@ $ helm upgrade -i gitlab gitlab/gitlab \
   --set prometheus.install=false \
   --create-namespace -n gitlab
 
+# Create CA certs for CA Issuer
+$ openssl genrsa -out ca.key 2048
+$ openssl req -new -x509 -days 3650 -key ca.key -subj "/C=KR/ST=SE/L=SE/O=Kubeworks/CN=KW Root CA" -out ca.crt
+$ kubectl create secret tls gitlab-ca --key ca.key --cert ca.crt -n gitlab
+
+# Create CA Issuer
+$ kubectl -n gitlab apply -f - <<"EOF"
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: gitlab-ca-issuer
+  namespace: gitlab
+spec:
+  ca:
+    secretName: gitlab-ca
+EOF
+
+# Create Ingress 
+$ kubectl -n gitlab apply -f - <<"EOF"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: gitlab-ca-issuer
+  name: gitlab-web-ingress
+  namespace: gitlab
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gitlab.vm01
+    http:
+      paths:
+      - backend:
+          service:
+            name: gitlab-webservice-default
+            port:
+              number: 8181
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - gitlab.vm01
+    secretName: gitlab-web-tls
+EOF
+
 $ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
 
 $ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
