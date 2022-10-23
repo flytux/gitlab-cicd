@@ -5,7 +5,8 @@
 
 ~~~
 # Install Docker
-$ sudo zypper in -y docker
+$ curl -fsSL https://test.docker.com -o test-docker.sh
+$ sudo sh test-docker.sh
 
 # Install user key
 $ ssh-keygen
