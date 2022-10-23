@@ -18,6 +18,7 @@ $ chmod 755 rke_linux-amd64 && sudo mv rke_linux-amd64 /usr/local/bin/rke
 
 # RKE cluster install
 $ rke config
+# host address : vm01, user : k8sadm, etcd/control/worker : y
 $ rke up
    
 # Install kubectl / helm   
