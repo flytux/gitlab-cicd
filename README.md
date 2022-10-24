@@ -271,8 +271,11 @@ update-yaml:
     - rm -rf ./..?*
     - git init
     - git remote add origin https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
-    - git fetch --depth 1 origin main
-    - git checkout -b main
+    - git -c http.sslVerify=false fetch --depth 1 origin main
+    - git -c http.sslVerify=false checkout main
+    - ls -al
+    - echo "updating image to $IMAGE_URL"
+    - sed -i "s|docker.vm01/kw-mvn:.*$|\$IMAGE_URL|" deploy.yml
 ~~~
 
 ### 6. run pipeline
