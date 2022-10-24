@@ -170,4 +170,76 @@ $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.p
 
 ### 5. develop build script
 
+~~~
+$ helm upgrade -i docker twuni/docker-registry \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0]=docker.vm01 \
+  --create-namespace -n registry
+  
+$ vi /etc/docker/daemon.json
+{
+   "insecure-registries": [ "docker.vm01", "172.100.100.101:30005" ]
+}
+
+$ sudo docker restart 
+~~~
+
+**gitlab-runner pipeline script - Work In Progress**
+
+~~~
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
+
+stages:
+  - build-id          # List of stages for jobs, and their order of execution
+  - maven-jib-build
+  - update-yaml
+
+get-build-id:
+  image: docker.io/library/bash:5.0.18@sha256:8ef3f8518f47caf1ddcbdf49e983a9a119f9faeb41c2468dd20ff39cd242d69d #tag: 5.0.18
+  stage: build-id
+  script:
+    - ts=`date "+%y%m%d-%H%M%S"`
+    - 'echo \"Current Timestamp: ${ts}\"'
+    - base='dev'
+    - id=`echo $RANDOM | md5sum | head -c 8`
+    - buildId=${base}-${ts}-${id}
+    - echo ${buildId}
+    - echo "BUILD_ID=$buildId" >> build.env
+    - cat build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+
+maven-jib-build:       # This job runs in the build stage, which runs first.
+  image: gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641
+  stage: maven-jib-build
+  script:
+    - "mvn -B \
+        -DsendCredentialsOverHttp=true \
+        -Djib.allowInsecureRegistries=true \
+        -Djib.to.image=docker.vm01/kw-mvn:$BUILD_ID \
+        -Djib.to.auth.username=admin \
+        -Djib.to.auth.password=1     \
+        compile \
+        com.google.cloud.tools:jib-maven-plugin:build"
+    - echo "IMAGE_URL=docker.vm01/kw-mvn:$BUILD_ID" >> build.env
+    - cat build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+
+update-yaml:
+  image: alpine/git:v2.26.2
+  stage: update-yaml
+  script:
+    - rm -rf ./*
+    - rm -rf ./.[!.]*
+    - rm -rf ./..?*
+    - git init
+    - git remote add origin https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
+    - git fetch --depth 1 origin main
+    - git checkout -b main
+~~~
+
 ### 6. run pipeline
