@@ -275,7 +275,12 @@ update-yaml:
     - git -c http.sslVerify=false checkout main
     - ls -al
     - echo "updating image to $IMAGE_URL"
-    - sed -i "s|docker.vm01/kw-mvn:.*$|\$IMAGE_URL|" deploy.yml
+    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_URL|" deploy.yml
+    - git config --global user.email "tekton@tekton.dev"
+    - git config --global user.name "Tekton Pipeline"
+    - git add .
+    - git commit --allow-empty -m "[tekton] updating image to $IMAGE_URL"
+    - git -c http.sslVerify=false push origin main
 ~~~
 
 ### 6. run pipeline
