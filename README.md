@@ -127,8 +127,47 @@ $ helm upgrade -i gitlab-runner gitlab/gitlab-runner \
 
 ### 4. install argocd
 
-### 5. install gitlab kubernetes integration
+~~~
+$ kubectl create namespace argocd
+$ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-### 6. develop build script
+$ k edit ds -n ingress-nginx nginx-ingress-controller
 
-### 7. run pipeline
+# add "--enable-ssl-passthrough" end of containers.args like below
+  - --watch-ingress-without-class=true
+  - --enable-ssl-passthrough
+
+# add ingress for argocd
+
+$ kubectl -n argocd apply -f - <<"EOF"  
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+spec:
+  rules:
+  - host: argocd.vm01
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              name: https
+EOF
+
+# get argocd initial password
+
+$ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+~~~
+
+### 5. develop build script
+
+### 6. run pipeline
