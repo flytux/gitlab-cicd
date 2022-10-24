@@ -125,7 +125,7 @@ $ helm upgrade -i gitlab-runner gitlab/gitlab-runner \
  
 ~~~
 
-### 4. install argocd
+### 4. install argocd & docker registry
 
 ~~~
 $ kubectl create namespace argocd
@@ -166,11 +166,10 @@ EOF
 # get argocd initial password
 
 $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-~~~
 
-### 5. develop build script
+# install docker registry
 
-~~~
+$ helm repo add twuni https://helm.twun.io
 $ helm upgrade -i docker twuni/docker-registry \
   --set ingress.enabled=true \
   --set ingress.hosts[0]=docker.vm01 \
@@ -183,6 +182,8 @@ $ vi /etc/docker/daemon.json
 
 $ sudo docker restart 
 ~~~
+
+### 5. develop build script
 
 **gitlab-runner pipeline script - Work In Progress**
 
