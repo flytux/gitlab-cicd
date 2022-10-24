@@ -117,7 +117,39 @@ $ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitl
 
 # Install gitlab-runner with gitlab-certs using secret
 
-$ helm upgrade -i gitlab-runner gitlab/gitlab-runner \
+$ helm fetch gitlab/gitlab-runner --untar
+
+# add runner-cache with pvc
+
+$ vi gitlab-runner/values.yaml
+
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "{{.Release.Namespace}}"
+        image = "ubuntu:16.04"
+    [[runners.kubernetes.volumes.pvc]]
+      mount_path = "/cache/maven.repository"
+      name = "gitlab-runner-cache-pvc"
+
+# create vpc
+
+$ kubectl -n gitlab apply -f - <<"EOF"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-runner-cache-pvc
+  namespace: gitlab
+spec:
+  storageClassName: local-path
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+$ helm upgrade -i gitlab-runner -f valus.yaml . \
   --set gitlabUrl=https://gitlab.vm01 \
   --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
   --set rbac.create=true \
