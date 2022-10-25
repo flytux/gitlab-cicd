@@ -60,6 +60,9 @@ $ helm install rancher rancher-latest/rancher \
   --set hostname=rancher.vm01 \
   --set bootstrapPassword=admin \
   --create-namespace
+  
+# https://rancher.vm01
+# bootstrap passwd : admin & change passwd
 ~~~
 
 ### 3. Install gitlab
