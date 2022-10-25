@@ -259,7 +259,7 @@ $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.p
 
 # add gitlab ca-cert (self-signed)
 - https://argocd.vm01/settings/certs?addTLSCert=true
-- add name & paste gitlab.vm01.crt pem file
+- add name gitlab.vm01 & paste gitlab.vm01.crt pem file
 
 # add argocd app 
 $ kubectl -n argocd apply -f - <<"EOF"
