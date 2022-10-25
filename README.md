@@ -285,16 +285,23 @@ spec:
     - CreateNamespace=true
 EOF
 
+# install docker registry
+$ helm repo add twuni https://helm.twun.io
+$ helm upgrade -i docker twuni/docker-registry \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0]=docker.vm01 \
+  --create-namespace -n registry
+
 # configure insecure docker registry from vm01
 $ sudo vi /etc/docker/daemon.json
 {
-   "insecure-registries": [ "registry.vm01" ]
+   "insecure-registries": [ "docker.vm01" ]
 }
 
 $ sudo systemctl restart docker
 
-# docker login as gitlab user/password created earlier (or root / root-password)
-$ docker login registry.vm01 -u jaehoon
+$ curl -v docker.vm01/v2/_catalog
+$ docker login docker.vm01 -u admin
 ~~~
 
 ### 5. develop build script
@@ -305,11 +312,11 @@ $ docker login registry.vm01 -u jaehoon
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
-  IMAGE_URL: "registry.vm01/kw-mvn"
+  IMAGE_URL: "docker.vm01/kw-mvn"
   DEPLOY_REPO_URL: "https://gitlab.vm01/jaehoon/kw-mvn-deploy.git"
   DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-zQeoBcy_LN95jtxxLnoM@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
-  REGISTRY_USER_ID: "jaehoon"
-  REGISTRY_USER_PASSWORD: "9ijn0okM!@"
+  REGISTRY_USER_ID: "admin"
+  REGISTRY_USER_PASSWORD: "1"
   ARGO_URL: "argocd.vm01"
   ARGO_USER_ID: "admin"
   ARGO_USER_PASSWORD: "nM2YjN6I7Bj62-7Z"
