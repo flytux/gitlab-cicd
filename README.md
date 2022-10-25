@@ -291,6 +291,9 @@ $ helm upgrade -i docker twuni/docker-registry \
   --set ingress.enabled=true \
   --set ingress.hosts[0]=docker.vm01 \
   --create-namespace -n registry
+  
+# set proxy-body-size of docker.vm02 ingress to 0
+$ kubectl patch ingress docker-docker-registry -p '{"metadata": {"annotations":{"nginx.ingress.kubernetes.io/proxy-body-size":"0"}}}' -n registry
 
 # configure insecure docker registry from vm01
 $ sudo vi /etc/docker/daemon.json
