@@ -293,12 +293,12 @@ $ helm upgrade -i docker twuni/docker-registry \
   --create-namespace -n registry
 
 # configure insecure docker registry from vm01
-$ vi /etc/docker/daemon.json
+$ sudo vi /etc/docker/daemon.json
 {
    "insecure-registries": [ "docker.vm01", "172.100.100.101:30005" ]
 }
 
-$ sudo docker restart 
+$ sudo systemctl restart docker
 ~~~
 
 ### 5. develop build script
