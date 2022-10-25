@@ -300,7 +300,7 @@ $ docker login registry.vm01 -u jaehoon
 ### 5. develop build script
 
 ~~~
-# Change Repo Name / Access Secret / Change branch / Unprotect main branch push from gitlab
+# Change Repo Name / Create Access Secret for deploy / Change branch if you want / or Unprotect main branch push from gitlab
 # Change ARGO_USER_PASSWORD
 
 variables:
