@@ -136,7 +136,11 @@ spec:
     secretName: gitlab-web-tls
 EOF
 
+
 # Add selfsigned CA crt to gitlab runner via secret
+# add to /etc/hosts 
+%YOUR_INTERNAL_IP% gitlab.vm01
+
 $ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
 
 $ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
