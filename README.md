@@ -198,7 +198,7 @@ $ k edit cm -n kube-system coredns
           lameduck 5s
         }
         hosts {
-          172.100.100.101 gitlab.vm01 registry.vm01 argocd.vm01
+          172.100.100.101 gitlab.vm01 docker.vm01 argocd.vm01
           fallthrough
         }
 
