@@ -307,7 +307,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
   IMAGE_URL: "registry.vm01/kw-mvn"
   DEPLOY_REPO_URL: "https://gitlab.vm01/jaehoon/kw-mvn-deploy.git"
-  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-aFJs2KLSC6hZMfH1VSBt@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-zQeoBcy_LN95jtxxLnoM@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "jaehoon"
   REGISTRY_USER_PASSWORD: "9ijn0okM!@"
   ARGO_URL: "argocd.vm01"
