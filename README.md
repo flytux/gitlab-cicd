@@ -50,6 +50,9 @@ $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bas
 # Install cert-manager
 $ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.0/cert-manager.yaml
 
+$ kn cert-manager
+$ k rollout status deploy
+
 # Install Rancher
 $ helm repo add rancher-latest https://releases.rancher.com/server-charts/latest   
 $ helm install rancher rancher-latest/rancher \
