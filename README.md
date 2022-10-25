@@ -132,7 +132,7 @@ $ vi gitlab-runner/values.yaml
       mount_path = "/cache/maven.repository"
       name = "gitlab-runner-cache-pvc"
 
-# create vpc
+# create gitlab runner cache pvc
 
 $ kubectl -n gitlab apply -f - <<"EOF"
 apiVersion: v1
@@ -154,8 +154,11 @@ $ helm upgrade -i gitlab-runner -f valus.yaml . \
   --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
   --set rbac.create=true \
   --set certsSecretName=gitlab-runner-tls
- 
+  
+# Import source / deploy repository
 ~~~
+
+
 
 ### 4. install argocd & docker registry
 
@@ -199,6 +202,12 @@ EOF
 
 $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
+# add gitlab ca-cert (self-signed)
+
+- https://argocd.vm01/settings/certs?addTLSCert=true
+- add name & paste gitlab.vm01.crt pem file
+
+
 # install docker registry
 
 $ helm repo add twuni https://helm.twun.io
@@ -217,46 +226,41 @@ $ sudo docker restart
 
 ### 5. develop build script
 
-**gitlab-runner pipeline script - Work In Progress**
-
 ~~~
+# Change Repo Name / Access Secret / Change branch / Unprotect main branch push from gitlab
+# Change ARGO_USER_PASSWORD
+
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
+  IMAGE_URL: "docker.vm01/kw-mvn"
+  DEPLOY_REPO_URL: "https://gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-aFJs2KLSC6hZMfH1VSBt@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  REGISTRY_USER_ID: "admin"
+  REGISTRY_USER_PASSWORD: "1"
+  ARGO_URL: "argocd.vm01"
+  ARGO_USER_ID: "admin"
+  ARGO_USER_PASSWORD: "iwOJo4Vs256LQZmT"
+  ARGO_APP_NAME: "kw-mvn"
 
 stages:
-  - build-id          # List of stages for jobs, and their order of execution
   - maven-jib-build
   - update-yaml
+  - sync-argo-app
 
-get-build-id:
-  image: docker.io/library/bash:5.0.18@sha256:8ef3f8518f47caf1ddcbdf49e983a9a119f9faeb41c2468dd20ff39cd242d69d #tag: 5.0.18
-  stage: build-id
-  script:
-    - ts=`date "+%y%m%d-%H%M%S"`
-    - 'echo \"Current Timestamp: ${ts}\"'
-    - base='dev'
-    - id=`echo $RANDOM | md5sum | head -c 8`
-    - buildId=${base}-${ts}-${id}
-    - echo ${buildId}
-    - echo "BUILD_ID=$buildId" >> build.env
-    - cat build.env
-  artifacts:
-    reports:
-      dotenv: build.env
-
-maven-jib-build:       # This job runs in the build stage, which runs first.
+maven-jib-build: 
   image: gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641
   stage: maven-jib-build
   script:
+    - COMMIT_TIME="$(date -d "$CI_COMMIT_TIMESTAMP" +"%Y%m%d-%H%M%S")"
     - "mvn -B \
         -DsendCredentialsOverHttp=true \
         -Djib.allowInsecureRegistries=true \
-        -Djib.to.image=docker.vm01/kw-mvn:$BUILD_ID \
-        -Djib.to.auth.username=admin \
-        -Djib.to.auth.password=1     \
+        -Djib.to.image=$IMAGE_URL:$COMMIT_TIME-$CI_JOB_ID \
+        -Djib.to.auth.username=$REGISTRY_USER_ID \
+        -Djib.to.auth.password=$REGISTRY_USER_PASSWORD     \
         compile \
         com.google.cloud.tools:jib-maven-plugin:build"
-    - echo "IMAGE_URL=docker.vm01/kw-mvn:$BUILD_ID" >> build.env
+    - echo "IMAGE_FULL_NAME=$IMAGE_URL:$COMMIT_TIME-$CI_JOB_ID" >> build.env
     - cat build.env
   artifacts:
     reports:
@@ -266,21 +270,40 @@ update-yaml:
   image: alpine/git:v2.26.2
   stage: update-yaml
   script:
-    - rm -rf ./*
-    - rm -rf ./.[!.]*
-    - rm -rf ./..?*
+    - mkdir deploy && cd deploy
     - git init
-    - git remote add origin https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
-    - git -c http.sslVerify=false fetch --depth 1 origin main
-    - git -c http.sslVerify=false checkout main
+
+    - echo $DEPLOY_REPO_CREDENTIALS > ~/.git-credentials 
+    - cat ~/.git-credentials
+    - git config credential.helper store
+    
+    - git remote add origin $DEPLOY_REPO_URL
+    - git remote -v
+
+    - git -c http.sslVerify=false fetch --depth 1 origin $CI_COMMIT_BRANCH
+    - git -c http.sslVerify=false checkout $CI_COMMIT_BRANCH
     - ls -al
-    - echo "updating image to $IMAGE_URL"
-    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_URL|" deploy.yml
+
+    - echo "updating image to $IMAGE_FULL_NAME"
+    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_FULL_NAME|" deploy.yml
+    - cat deploy.yml | grep image
+    
     - git config --global user.email "tekton@tekton.dev"
     - git config --global user.name "Tekton Pipeline"
     - git add .
-    - git commit --allow-empty -m "[tekton] updating image to $IMAGE_URL"
-    - git -c http.sslVerify=false push origin main
+    - git commit --allow-empty -m "[tekton] updating image to $IMAGE_FULL_NAME"
+    - git -c http.sslVerify=false push origin $CI_COMMIT_BRANCH
+
+sync-argocd:
+  image: quay.io/argoproj/argocd:v2.4.8
+  stage: sync-argo-app
+  script:
+    - argocd login $ARGO_URL --username $ARGO_USER_ID --password $ARGO_USER_PASSWORD --insecure
+
+    - argocd app sync $ARGO_APP_NAME --insecure
+    - argocd app wait $ARGO_APP_NAME --sync --health --operation --insecure
 ~~~
 
 ### 6. run pipeline
+
+!!!
