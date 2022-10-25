@@ -105,6 +105,9 @@ spec:
     secretName: gitlab-ca
 EOF
 
+# Delete default ingress gitlab-webservice
+$ k delete ingress gitlab-webservice-default -n gitlab
+
 # Create Ingress 
 $ kubectl -n gitlab apply -f - <<"EOF"
 apiVersion: networking.k8s.io/v1
