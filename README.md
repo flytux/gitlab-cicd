@@ -189,8 +189,24 @@ spec:
       storage: 1Gi
 EOF
 
+# add in cluster dns gitlab.vm01 to coredns
+$ k edit cm -n kube-system coredns
+  Corefile: |
+    .:53 {
+        errors
+        health {
+          lameduck 5s
+        }
+        hosts {
+          172.100.100.101 gitlab.vm01 registry.vm01 argocd.vm01
+          fallthrough
+        }
+
+# get runner token from KW-MVN project
+# Settings > CI/CD > Runners > Registration Token
+
 # install gitlab-runner helm chart
-$ helm upgrade -i gitlab-runner -f valus.yaml . \
+$ helm upgrade -i gitlab-runner -f gitlab-runner/values.yaml gitlab-runner \
   --set gitlabUrl=https://gitlab.vm01 \
   --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
   --set rbac.create=true \
@@ -198,8 +214,6 @@ $ helm upgrade -i gitlab-runner -f valus.yaml . \
   
 
 ~~~
-
-
 
 ### 4. install argocd & docker registry
 
