@@ -21,6 +21,10 @@ $ rke config
 # host address : vm01, user : k8sadm, etcd/control/worker : y
 $ rke up
 
+# setup cluster access
+$ mkdir ~/.kube
+$ cp kube_config_cluster.yml ~/.kube/config
+
 # add k8s bash aliases
 $ cat <<EOF >> ~/.bashrc
 # k8s alias
@@ -42,6 +46,7 @@ $ source ~/.bashrc
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 $ chmod 755 kubectl && sudo mv kubectl /usr/local/bin
 $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
 ~~~
 
 ### 2. Install rancher
