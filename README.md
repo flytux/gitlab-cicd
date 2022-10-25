@@ -1,4 +1,4 @@
-# gitlab-cicd
+# gitlab-cicd pipeline for maven-argocd
 
 
 ### 1. Install rke cluster
@@ -30,7 +30,6 @@ $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bas
 ### 2. Install rancher
 
 ~~~
-
 # Install cert-manager
 $ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.0/cert-manager.yaml
 
@@ -111,16 +110,15 @@ spec:
     secretName: gitlab-web-tls
 EOF
 
+# Add selfsigned CA crt to gitlab runner via secret
 $ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
 
 $ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
 
 # Install gitlab-runner with gitlab-certs using secret
-
 $ helm fetch gitlab/gitlab-runner --untar
 
 # add runner-cache with pvc
-
 $ vi gitlab-runner/values.yaml
 
   config: |
@@ -133,7 +131,6 @@ $ vi gitlab-runner/values.yaml
       name = "gitlab-runner-cache-pvc"
 
 # create gitlab runner cache pvc
-
 $ kubectl -n gitlab apply -f - <<"EOF"
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -149,13 +146,14 @@ spec:
       storage: 1Gi
 EOF
 
+# install gitlab-runner helm chart
 $ helm upgrade -i gitlab-runner -f valus.yaml . \
   --set gitlabUrl=https://gitlab.vm01 \
   --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
   --set rbac.create=true \
   --set certsSecretName=gitlab-runner-tls
   
-# Import source / deploy repository
+# Import source / deploy repository from gitlab
 ~~~
 
 
@@ -163,9 +161,11 @@ $ helm upgrade -i gitlab-runner -f valus.yaml . \
 ### 4. install argocd & docker registry
 
 ~~~
+# install argocd
 $ kubectl create namespace argocd
 $ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
+# add argocd ssl-passthrough to nginx ingress
 $ k edit ds -n ingress-nginx nginx-ingress-controller
 
 # add "--enable-ssl-passthrough" end of containers.args like below
@@ -173,7 +173,6 @@ $ k edit ds -n ingress-nginx nginx-ingress-controller
   - --enable-ssl-passthrough
 
 # add ingress for argocd
-
 $ kubectl -n argocd apply -f - <<"EOF"  
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -199,23 +198,44 @@ spec:
 EOF
 
 # get argocd initial password
-
 $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
 # add gitlab ca-cert (self-signed)
-
 - https://argocd.vm01/settings/certs?addTLSCert=true
 - add name & paste gitlab.vm01.crt pem file
 
+# add argocd app 
+$ kubectl -n argocd apply -f - <<"EOF"
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kw-mvn
+  namespace: argocd
+spec:
+  destination:
+    namespace: deploy
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: .
+    repoURL: https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+EOF
 
 # install docker registry
-
 $ helm repo add twuni https://helm.twun.io
 $ helm upgrade -i docker twuni/docker-registry \
   --set ingress.enabled=true \
   --set ingress.hosts[0]=docker.vm01 \
   --create-namespace -n registry
-  
+
+# configure insecure docker registry from vm01
 $ vi /etc/docker/daemon.json
 {
    "insecure-registries": [ "docker.vm01", "172.100.100.101:30005" ]
