@@ -3,7 +3,7 @@
 
 ### 1. Install rke cluster
 
-~~~
+```bash
 # Install Docker
 $ curl -fsSL https://get.docker.com -o get-docker.sh
 $ sudo sh get-docker.sh
@@ -27,6 +27,7 @@ $ cp kube_config_cluster.yml ~/.kube/config
 
 # add k8s bash aliases
 $ cat <<EOF >> ~/.bashrc
+
 # k8s alias
 
 source <(kubectl completion bash)
@@ -42,16 +43,15 @@ EOF
 
 $ source ~/.bashrc
 
-# Install kubectl / helm   
+# Install kubectl / helm
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 $ chmod 755 kubectl && sudo mv kubectl /usr/local/bin
 $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-~~~
+```
 
 ### 2. Install rancher
 
-~~~
+```bash
 # Install cert-manager
 $ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.10.0/cert-manager.yaml
 
@@ -68,11 +68,11 @@ $ helm install rancher rancher-latest/rancher \
   
 # https://rancher.vm01
 # bootstrap passwd : admin & change passwd
-~~~
+```
 
 ### 3. Install gitlab
 
-~~~
+```bash
 # Install local-path storage class & set default
 $ kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.22/deploy/local-path-storage.yaml
 $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
@@ -216,13 +216,11 @@ $ helm upgrade -i gitlab-runner -f gitlab-runner/values.yaml gitlab-runner \
   --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
   --set rbac.create=true \
   --set certsSecretName=gitlab-runner-tls
-  
+```  
 
-~~~
+### 4. install argocd & docker registry
 
-### 4. install argocd
-
-~~~
+```bash
 # install argocd
 $ kubectl create namespace argocd
 $ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -265,6 +263,8 @@ $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.p
 # add gitlab ca-cert (self-signed)
 - https://argocd.vm01/settings/certs?addTLSCert=true
 - add name gitlab.vm01 & paste gitlab.vm01.crt pem file
+
+$ cat gitlab.vm01.crt
 
 # add argocd app 
 $ kubectl -n argocd apply -f - <<"EOF"
@@ -310,24 +310,26 @@ $ sudo systemctl restart docker
 
 $ curl -v docker.vm01/v2/_catalog
 $ docker login docker.vm01 -u admin
-~~~
+```
 
 ### 5. develop build script
 
-~~~
-# Change Repo Name / Create Access Secret for deploy / Change branch if you want / or Unprotect main branch push from gitlab
-# Change ARGO_USER_PASSWORD
+```bash
+
+# Create Personal Access Token of User for deploy / Update DEPLOY_REPO_CREDENTIALS
+# Unprotect main branch push from gitlab - https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
+# Update ARGO_USER_PASSWORD with value of kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
   IMAGE_URL: "docker.vm01/kw-mvn"
   DEPLOY_REPO_URL: "https://gitlab.vm01/jaehoon/kw-mvn-deploy.git"
-  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-zQeoBcy_LN95jtxxLnoM@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-mFT6GgL_4mvDuTo8Lpmf@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "admin"
   REGISTRY_USER_PASSWORD: "1"
   ARGO_URL: "argocd.vm01"
   ARGO_USER_ID: "admin"
-  ARGO_USER_PASSWORD: "nM2YjN6I7Bj62-7Z"
+  ARGO_USER_PASSWORD: "nUBniE6vQv1Sy1JH"
   ARGO_APP_NAME: "kw-mvn"
 
 stages:
@@ -390,7 +392,7 @@ sync-argocd:
 
     - argocd app sync $ARGO_APP_NAME --insecure
     - argocd app wait $ARGO_APP_NAME --sync --health --operation --insecure
-~~~
+```
 
 ### 6. run pipeline
 
