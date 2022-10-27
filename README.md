@@ -1,4 +1,4 @@
-# gitlab-cicd pipeline for maven-argocd
+# GitLab-CI/CD Pipeline for Maven / ArgoCD
 
 
 ### 1. Install rke cluster
