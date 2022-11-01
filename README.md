@@ -60,10 +60,10 @@ $ k rollout status deploy
 # Install Rancher
 $ helm repo add rancher-latest https://releases.rancher.com/server-charts/latest   
 $ helm install rancher rancher-latest/rancher \
-  --namespace cattle-system \
   --set hostname=rancher.vm01 \
   --set bootstrapPassword=admin \
-  --create-namespace
+  --set replicas=1 \
+  --create-namespace -n cattle-system
   
 # https://rancher.vm01
 # bootstrap passwd : admin & change passwd
