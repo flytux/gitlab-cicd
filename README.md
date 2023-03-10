@@ -399,15 +399,4 @@ sync-argocd:
 !!!
 
 
-<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
-    <mirrors>
-        <mirror>
-            <id>kw-internal-http-unblocker</id>
-            <mirrorOf>kw-mvn</mirrorOf>
-            <name></name>
-            <url>http://nexus.kubeworks.net/repository/kw-internal/</url>
-        </mirror>
-    </mirrors>
-</settings>
+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
