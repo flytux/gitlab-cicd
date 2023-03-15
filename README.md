@@ -81,14 +81,15 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 $ helm repo add gitlab https://charts.gitlab.io/
   
 $ helm upgrade -i gitlab gitlab/gitlab \
-  --set global.hosts.domain=vm01 \
-  --set certmanager.install=false \
+  --set global.edition=ce \
+  --set global.hosts.domain=herosonsa.co.kr \
+  --set global.minio.enabled=false \
   --set global.ingress.configureCertmanager=false \
   --set global.ingress.class=nginx \
+  --set certmanager.install=false \
   --set nginx-ingress.enabled=false \
   --set gitlab-runner.install=false \
-  --set prometheus.install=false \
-  --create-namespace -n gitlab
+  --set prometheus.install=false
 
 # get root initial password
 $ k get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
