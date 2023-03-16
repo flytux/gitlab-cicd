@@ -83,13 +83,13 @@ $ helm repo add gitlab https://charts.gitlab.io/
 $ helm upgrade -i gitlab gitlab/gitlab \
   --set global.edition=ce \
   --set global.hosts.domain=herosonsa.co.kr \
-  --set global.minio.enabled=false \
   --set global.ingress.configureCertmanager=false \
   --set global.ingress.class=nginx \
   --set certmanager.install=false \
   --set nginx-ingress.enabled=false \
   --set gitlab-runner.install=false \
-  --set prometheus.install=false
+  --set prometheus.install=false \
+  -n gitlab -- create-namespace
 
 # get root initial password
 $ k get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
