@@ -64,6 +64,7 @@ $ helm install rancher rancher-latest/rancher \
   --set hostname=rancher.vm01 \
   --set bootstrapPassword=admin \
   --set replicas=1 \
+  --set global.cattle.psp.enabled=false \
   --create-namespace -n cattle-system
   
 # https://rancher.vm01
