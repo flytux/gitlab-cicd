@@ -19,8 +19,19 @@ $ chmod 755 rke_linux-amd64 && sudo mv rke_linux-amd64 /usr/local/bin/rke
 $ rke config
 # host address : vm01, user : k8sadm, etcd/control/worker : y
 $ rke up
+```
 
-# setup cluster access
+### Install k3s cluster
+
+```bash
+# K3S Install 
+$ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.9+k3s1 sh -
+```
+
+
+### setup cluster access
+
+```bash
 $ mkdir ~/.kube
 $ cp kube_config_cluster.yml ~/.kube/config
 
