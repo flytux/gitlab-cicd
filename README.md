@@ -1,39 +1,69 @@
 # GitLab-CI/CD Pipeline for Maven / ArgoCD
 
-### 1. Install rke cluster
+- 4 Core, 16Gi, 100GB VM 3기를 준비합니다.
+- 2기는 DevOps 클러스터, 1기는 서비스 클러스터로 2개의 클러스터를 구성합니다.
+- DevOps 클러스터에 Rancher, Gitlab, Gitlab Runner, ArgoCD 등 툴체인을 구성합니다.
+- 빌드된 서비스는 서비스 클러스터로 배포됩니다.
+
+### 1. Install rke2 devops cluster
+
+- VM1에 rke2 마스터노드를 설치하고, 클러스터 추가용 token을 확인합니다.
+- VM2에 rke2 워커노드를 설치하고 마스터노드에 연결합니다.
 
 ```bash
-# Install Docker
-$ curl -fsSL https://get.docker.com -o get-docker.sh
-$ sudo sh get-docker.sh
+# Create RKE2 cluster Master Node @ VM1
 
-# Install user key
-$ ssh-keygen
-$ ssh-copy-id k8sadm@vm01 # User@Host
+# Login VM1
 
-# RKE binary download
-$ wget https://github.com/rancher/rke/releases/download/v1.3.15/rke_linux-amd64
-$ chmod 755 rke_linux-amd64 && sudo mv rke_linux-amd64 /usr/local/bin/rke
+$ sudo -i
 
-# RKE cluster install
-$ rke config
-# host address : vm01, user : k8sadm, etcd/control/worker : y
-$ rke up
+$ curl -sfL https://get.rke2.io | sh -
+
+$ systemctl enable rke2-server --now &
+
+$ systemctl status -l rke2-server
+
+$ journalctl -fa
+
+# Check server IP & token
+
+$ ip a | grep inet
+
+$ cat /var/lib/rancher/rke2/server/token
+K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
+
+# Create RKE2 cluster Worker Node @ VM2
+
+# Login VM2
+
+$ sudo -i
+
+$ curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="agent" sh -
+
+$ mkdir -p /etc/rancher/rke2/
+
+$ cat << EOF >> /etc/rancher/rke2/config.yaml
+server: https://10.128.15.211:9345 # VM1 private IP 
+token: K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
+EOF
+
+$ systemctl enable rke2-agent.service --now &
+
+$ journalctl -fa
 ```
+---
 
-### Install k3s cluster
+### 2. setup cluster access
 
-```bash
-# K3S Install 
-$ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.9+k3s1 sh -
-```
-
-
-### setup cluster access
+- VM1에 클러스터 접속을 위한 kubeconfig 환경을 설정합니다.
 
 ```bash
+
+# Login VM1
+
 $ mkdir ~/.kube
-$ cp kube_config_cluster.yml ~/.kube/config
+$ sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+$ sudo chown k8sadm ~/.kube/config 
 
 # add k8s bash aliases
 $ cat <<EOF >> ~/.bashrc
@@ -58,9 +88,14 @@ $ source ~/.bashrc
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 $ chmod 755 kubectl && sudo mv kubectl /usr/local/bin
 $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+$ k get nodes -o wide
 ```
 
 ### 2. Install rancher
+
+- Cert-Manager와 Rancher를 Helm을 이용하여 설치합니다.
+- 브라우저로 https:/rancher.kw01에 접속하여 암호를 설정합니다.
 
 ```bash
 # Install cert-manager
@@ -72,13 +107,13 @@ $ k rollout status deploy
 # Install Rancher
 $ helm repo add rancher-latest https://releases.rancher.com/server-charts/latest   
 $ helm install rancher rancher-latest/rancher \
-  --set hostname=rancher.vm01 \
+  --set hostname=rancher.kw01 \
   --set bootstrapPassword=admin \
   --set replicas=1 \
   --set global.cattle.psp.enabled=false \
   --create-namespace -n cattle-system
-  
-# https://rancher.vm01
+
+# https://rancher.kw01
 # bootstrap passwd : admin & change passwd
 ```
 
