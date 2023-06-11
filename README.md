@@ -128,20 +128,21 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 $ helm repo add gitlab https://charts.gitlab.io/
   
 $ helm upgrade -i gitlab gitlab/gitlab \
-  --set global.edition=ce \
-  --set global.hosts.domain=herosonsa.co.kr \
-  --set global.ingress.configureCertmanager=false \
-  --set global.ingress.class=nginx \
-  --set certmanager.install=false \
-  --set nginx-ingress.enabled=false \
-  --set gitlab-runner.install=false \
-  --set prometheus.install=false \
-  -n gitlab -- create-namespace
+--set global.edition=ce \
+--set global.hosts.domain=kw01 \
+--set global.ingress.configureCertmanager=false \
+--set global.ingress.class=nginx \
+--set certmanager.install=false \
+--set nginx-ingress.enabled=false \
+--set gitlab-runner.install=false \
+--set prometheus.install=false \
+-n gitlab --create-namespace
 
 # get root initial password
 $ k get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
 
-# login gitlab.vm01 as root / %YOUR_INITIAL_PASSWORD%
+# login gitlab.kw01 as root / %YOUR_INITIAL_PASSWORD%
+# https://gitlab.kw01/admin/application_settings/general > visibility & access controls > import sources > Repository By URL
 
 # create User with YOUR ID / PASSWD
 
@@ -186,7 +187,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: gitlab.vm01
+  - host: gitlab.kw01
     http:
       paths:
       - backend:
@@ -198,33 +199,12 @@ spec:
         pathType: Prefix
   tls:
   - hosts:
-    - gitlab.vm01
+    - gitlab.kw01
     secretName: gitlab-web-tls
 EOF
 
-
-# Add selfsigned CA crt to gitlab runner via secret
-# add to /etc/hosts 
-%YOUR_INTERNAL_IP% gitlab.vm01
-
-$ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
-
-$ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
-
-# Install gitlab-runner with gitlab-certs using secret
-$ helm fetch gitlab/gitlab-runner --untar
-
-# add runner-cache with pvc
-$ vi gitlab-runner/values.yaml
-
-  config: |
-    [[runners]]
-      [runners.kubernetes]
-        namespace = "{{.Release.Namespace}}"
-        image = "ubuntu:16.04"
-    [[runners.kubernetes.volumes.pvc]]
-      mount_path = "/cache/maven.repository"
-      name = "gitlab-runner-cache-pvc"
+$ openssl s_client -showcerts -connect gitlab.kw01:443 -servername gitlab.kw01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.kw01.crt
+$ k create secret generic gitlab-runner-tls --from-file=gitlab.kw01.crt  -n gitlab
 
 # create gitlab runner cache pvc
 $ kubectl -n gitlab apply -f - <<"EOF"
@@ -242,28 +222,38 @@ spec:
       storage: 1Gi
 EOF
 
-# add in cluster dns gitlab.vm01 to coredns
-$ k edit cm -n kube-system coredns
-  Corefile: |
-    .:53 {
-        errors
-        health {
-          lameduck 5s
-        }
-        hosts {
-          172.100.100.101 gitlab.vm01 docker.vm01 argocd.vm01
-          fallthrough
-        }
+# https://gitlab.kw01/admin/runners/new
+# Tag > kw01-runner-01 > Submit
+# runner token 값 복사 : The runner token glrt-3LokhxwHAcr3DHPcz-Nz
+# 아래 runnerToken에 입력, hostAlias값에 VM1 IP 입력
 
-# get runner token from KW-MVN project
-# Settings > CI/CD > Runners > Registration Token
+$ cat << EOF >> gitlab-runner-values.yaml
+gitlabUrl: http://gitlab-webservice-default:8181
 
-# install gitlab-runner helm chart
-$ helm upgrade -i gitlab-runner -f gitlab-runner/values.yaml gitlab-runner \
-  --set gitlabUrl=https://gitlab.vm01 \
-  --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
-  --set rbac.create=true \
-  --set certsSecretName=gitlab-runner-tls
+runnerToken: glrt-JLChuvsvSPv8sDu7bA3a
+rbac:
+  create: true
+
+certsSecretName: gitlab-runner-tls
+
+runners:
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "{{.Release.Namespace}}"
+        image = "ubuntu:16.04"
+    [[runners.kubernetes.volumes.pvc]]
+      mount_path = "/cache/maven.repository"
+      name = "gitlab-runner-cache-pvc"
+
+hostAliases: 
+  - ip: "10.128.15.211"
+    hostnames:
+     - "gitlab.kw01"
+EOF
+
+# Gitlab Runner 설치
+$ helm upgrade -i gitlab-runner -f gr-values.yaml gitlab/gitlab-runner
 ```  
 
 ### 4. install argocd & docker registry
