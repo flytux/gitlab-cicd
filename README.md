@@ -29,6 +29,7 @@ $ journalctl -fa
 
 $ ip a | grep inet
 
+# Check master node token to join the cluster
 $ cat /var/lib/rancher/rke2/server/token
 K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
 
@@ -42,6 +43,7 @@ $ curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="agent" sh -
 
 $ mkdir -p /etc/rancher/rke2/
 
+# Ediit master node IP and master node token to join
 $ cat << EOF >> /etc/rancher/rke2/config.yaml
 server: https://10.128.15.211:9345 # VM1 private IP 
 token: K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
