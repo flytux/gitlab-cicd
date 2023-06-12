@@ -359,7 +359,7 @@ $ k exec -it $(k get pods -l app.kubernetes.io/name=argocd-server -o name) bash
 
 # check argocd user id and password
 $ argocd login argocd-server.argocd --insecure --username admin --password e3m7VS-JpcpczVcq
-$ argocd repo add http://gitlab.kw01/argo/kw-mvn-deploy.git --username argo --insecure-skip-server-verification
+$ argocd repo add https://gitlab.kw01/argo/kw-mvn-deploy.git --username argo --insecure-skip-server-verification
 # enter gitlab password : abcd!234
 
 $ kubectl -n argocd apply -f - <<"EOF"
