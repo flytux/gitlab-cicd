@@ -474,14 +474,14 @@ $ sudo cat /var/lib/rancher/rke2/agent/etc/containerd/config.toml
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
-  IMAGE_URL: "10.128.15.213:30005/kw-mvn"
+  IMAGE_URL: "10.128.15.217:30005/kw-mvn"
   DEPLOY_REPO_URL: "https://gitlab.kw01/argo/kw-mvn-deploy.git"
-  DEPLOY_REPO_CREDENTIALS: "https://argo:abcd!234@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  DEPLOY_REPO_CREDENTIALS: "https://argo:abcd!234@gitlab.kw01/argo/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "admin"
   REGISTRY_USER_PASSWORD: "1"
   ARGO_URL: "argocd-server.argocd"
   ARGO_USER_ID: "admin"
-  ARGO_USER_PASSWORD: "e3m7VS-JpcpczVcq"
+  ARGO_USER_PASSWORD: "CWJjH2Fb278mmuDx"
   ARGO_APP_NAME: "kw-mvn"
 
 
