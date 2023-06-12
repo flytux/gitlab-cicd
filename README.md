@@ -525,8 +525,8 @@ update-yaml:
     - ls -al
 
     - echo "updating image to $IMAGE_FULL_NAME"
-    - sed -i "s|newTag:.*$|newTag: $NEW_TAG|" dev/kustomization.yaml
-    - cat dev/kustomization.yaml
+    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_FULL_NAME|" deploy.yml
+    - cat deploy.yml | grep image
     
     - git config --global user.email "tekton@tekton.dev"
     - git config --global user.name "Tekton Pipeline"
