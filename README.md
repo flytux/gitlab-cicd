@@ -220,7 +220,7 @@ $ cat ca.crt >> gitlab.kw01.crt
 $ k create secret generic gitlab-runner-tls --from-file=gitlab.kw01.crt  -n gitlab
 
 # add in cluster dns gitlab.kw01 to coredns
-$ k edit cm -n kube-system coredns
+$ k edit cm -n kube-system rke2-coredns-rke2-coredns
 
 data:
   Corefile: |-
