@@ -1,39 +1,71 @@
 # GitLab-CI/CD Pipeline for Maven / ArgoCD
 
-### 1. Install rke cluster
+- 4 Core, 16Gi, 100GB VM 3기를 준비합니다.
+- 2기는 DevOps 클러스터, 1기는 서비스 클러스터로 2개의 클러스터를 구성합니다.
+- DevOps 클러스터에 Rancher, Gitlab, Gitlab Runner, ArgoCD 등 툴체인을 구성합니다.
+- 빌드된 서비스는 서비스 클러스터로 배포됩니다.
+
+### 1. Install rke2 devops cluster
+
+- VM1에 rke2 마스터노드를 설치하고, 클러스터 추가용 token을 확인합니다.
+- VM2에 rke2 워커노드를 설치하고 마스터노드에 연결합니다.
 
 ```bash
-# Install Docker
-$ curl -fsSL https://get.docker.com -o get-docker.sh
-$ sudo sh get-docker.sh
+# Create RKE2 cluster Master Node @ VM1
 
-# Install user key
-$ ssh-keygen
-$ ssh-copy-id k8sadm@vm01 # User@Host
+# Login VM1
 
-# RKE binary download
-$ wget https://github.com/rancher/rke/releases/download/v1.3.15/rke_linux-amd64
-$ chmod 755 rke_linux-amd64 && sudo mv rke_linux-amd64 /usr/local/bin/rke
+$ sudo -i
 
-# RKE cluster install
-$ rke config
-# host address : vm01, user : k8sadm, etcd/control/worker : y
-$ rke up
+$ curl -sfL https://get.rke2.io | sh -
+
+$ systemctl enable rke2-server --now &
+
+$ systemctl status -l rke2-server
+
+$ journalctl -fa
+
+# Check server IP & token
+
+$ ip a | grep inet
+
+# Check master node token to join the cluster
+$ cat /var/lib/rancher/rke2/server/token
+K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
+
+# Create RKE2 cluster Worker Node @ VM2
+
+# Login VM2
+
+$ sudo -i
+
+$ curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="agent" sh -
+
+$ mkdir -p /etc/rancher/rke2/
+
+# Ediit master node IP and master node token to join
+$ cat << EOF >> /etc/rancher/rke2/config.yaml
+server: https://10.128.15.213:9345 # VM1 private IP 
+token: K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
+EOF
+
+$ systemctl enable rke2-agent.service --now &
+
+$ journalctl -fa
 ```
+---
 
-### Install k3s cluster
+### 2. Setup cluster access
 
-```bash
-# K3S Install 
-$ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.9+k3s1 sh -
-```
-
-
-### setup cluster access
+- VM1에 클러스터 접속을 위한 kubeconfig 환경을 설정합니다.
 
 ```bash
+
+# Login VM1
+
 $ mkdir ~/.kube
-$ cp kube_config_cluster.yml ~/.kube/config
+$ sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+$ sudo chown k8sadm ~/.kube/config 
 
 # add k8s bash aliases
 $ cat <<EOF >> ~/.bashrc
@@ -52,15 +84,20 @@ alias di='docker images --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Si
 alias kge="kubectl get events  --sort-by='.metadata.creationTimestamp'  -o 'go-template={{range .items}}{{.involvedObject.name}}{{\"\t\"}}{{.involvedObject.kind}}{{\"\t\"}}{{.message}}{{\"\t\"}}{{.reason}}{{\"\t\"}}{{.type}}{{\"\t\"}}{{.firstTimestamp}}{{\"\n\"}}{{end}}'"
 EOF
 
-$ source ~/.bashrc
-
 # Install kubectl / helm
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 $ chmod 755 kubectl && sudo mv kubectl /usr/local/bin
 $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+$ source ~/.bashrc
+
+$ k get nodes -o wide
 ```
 
 ### 2. Install rancher
+
+- Cert-Manager와 Rancher를 Helm을 이용하여 설치합니다.
+- 브라우저로 https:/rancher.kw01에 접속하여 암호를 설정합니다.
 
 ```bash
 # Install cert-manager
@@ -72,15 +109,17 @@ $ k rollout status deploy
 # Install Rancher
 $ helm repo add rancher-latest https://releases.rancher.com/server-charts/latest   
 $ helm install rancher rancher-latest/rancher \
-  --set hostname=rancher.vm01 \
+  --set hostname=rancher.kw01 \
   --set bootstrapPassword=admin \
   --set replicas=1 \
   --set global.cattle.psp.enabled=false \
   --create-namespace -n cattle-system
-  
-# https://rancher.vm01
+
+# https://rancher.kw01
 # bootstrap passwd : admin & change passwd
 ```
+
+---
 
 ### 3. Install gitlab
 
@@ -93,31 +132,35 @@ $ kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storag
 $ helm repo add gitlab https://charts.gitlab.io/
   
 $ helm upgrade -i gitlab gitlab/gitlab \
-  --set global.edition=ce \
-  --set global.hosts.domain=herosonsa.co.kr \
-  --set global.ingress.configureCertmanager=false \
-  --set global.ingress.class=nginx \
-  --set certmanager.install=false \
-  --set nginx-ingress.enabled=false \
-  --set gitlab-runner.install=false \
-  --set prometheus.install=false \
-  -n gitlab -- create-namespace
+--set global.edition=ce \
+--set global.hosts.domain=kw01 \
+--set global.ingress.configureCertmanager=false \
+--set global.ingress.class=nginx \
+--set certmanager.install=false \
+--set nginx-ingress.enabled=false \
+--set gitlab-runner.install=false \
+--set prometheus.install=false \
+-n gitlab --create-namespace
 
 # get root initial password
-$ k get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
+$ k get -n gitlab secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
 
-# login gitlab.vm01 as root / %YOUR_INITIAL_PASSWORD%
+# login gitlab.kw01 as root / %YOUR_INITIAL_PASSWORD%
+# https://gitlab.kw01/admin/application_settings/general > visibility & access controls > import sources > Repository By URL
 
 # create User with YOUR ID / PASSWD
+# argo / abcd!234 argo@devops
 
 # approve YOUR ID with root account admin menu
+# Login root and approve argo account
 
 # Import source / deploy repository from gitlab
-- https://github.com/flytux/kw-mvn
-- https://github.com/flytux/kw-mvn-deploy
+# Login argo and import projects
+- https://github.com/flytux/kw-mvn : Project Name > KW-MVN
+- https://github.com/flytux/kw-mvn-deploy : Project Name > KW-MVN-DEPLOY
+- main branch > deploy.yml 파일의 이미지 URL을 VM1:30005로 변경합니다.
+- docker.vm01 > 10.128.15.217:30005 로 변경 # VM1 IP:30005
 
-# Gitlab Runner doesn't support autogenerated certs from gitlab for now
-# Create CA certs, Ingress TLS from cert-manager & pass it to gitlab-runner certs-secret
 
 # Create CA certs for CA Issuer
 $ openssl genrsa -out ca.key 2048
@@ -151,7 +194,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: gitlab.vm01
+  - host: gitlab.kw01
     http:
       paths:
       - backend:
@@ -163,25 +206,76 @@ spec:
         pathType: Prefix
   tls:
   - hosts:
-    - gitlab.vm01
+    - gitlab.kw01
     secretName: gitlab-web-tls
 EOF
 
 
 # Add selfsigned CA crt to gitlab runner via secret
 # add to /etc/hosts 
-%YOUR_INTERNAL_IP% gitlab.vm01
+cat << EOF | sudo tee -a /etc/hosts
+10.128.15.217 gitlab.kw01
+EOF
 
-$ openssl s_client -showcerts -connect gitlab.vm01:443 -servername gitlab.vm01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.vm01.crt
+$ openssl s_client -showcerts -connect gitlab.kw01:443 -servername gitlab.kw01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.kw01.crt
+# Custom CA 인증서를 추가합니다.
+$ cat ca.crt >> gitlab.kw01.crt
+$ k create secret generic gitlab-runner-tls --from-file=gitlab.kw01.crt  -n gitlab
 
-$ k create secret generic gitlab-runner-tls --from-file=gitlab.vm01.crt  -n gitlab
+# add in cluster dns gitlab.kw01 to coredns
+$ k edit cm -n kube-system rke2-coredns-rke2-coredns
 
-# Install gitlab-runner with gitlab-certs using secret
-$ helm fetch gitlab/gitlab-runner --untar
+data:
+  Corefile: |-
+    .:53 {
+        errors
+        health  {
+            lameduck 5s
+        }
+     hosts {
+     10.128.15.215 gitlab.kw01
+     fallthrough
+     }
+     ready
+        kubernetes   cluster.local  cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+        }
+        prometheus   0.0.0.0:9153
+        forward   . /etc/resolv.conf
+        cache   30
+        loop
+        reload
+        loadbalance
+    }
+    
+$ k run -it --rm curl --image curlimages/curl -- sh
+/ $ ping gitlab.kw01
 
-# add runner-cache with pvc
-$ vi gitlab-runner/values.yaml
+```
+---
 
+### 4. Install gitlab-runner
+
+```bash
+# Setup runner and get runner token from KW-MVN project
+
+# https://gitlab.kw01/argo/kw-mvn/-/runners/new
+
+# Configuration > Run untagged jobs 체크 > Submit
+# Copy token glrt-wb_BLETYwEdVpP6qCyQX
+
+$ cat << EOF > gitlab-runner-values.yaml
+gitlabUrl: https://gitlab.kw01
+
+runnerToken: glrt-wb_BLETYwEdVpP6qCyQX
+rbac:
+  create: true
+
+certsSecretName: gitlab-runner-tls
+
+runners:
   config: |
     [[runners]]
       [runners.kubernetes]
@@ -190,6 +284,7 @@ $ vi gitlab-runner/values.yaml
     [[runners.kubernetes.volumes.pvc]]
       mount_path = "/cache/maven.repository"
       name = "gitlab-runner-cache-pvc"
+EOF
 
 # create gitlab runner cache pvc
 $ kubectl -n gitlab apply -f - <<"EOF"
@@ -207,43 +302,25 @@ spec:
       storage: 1Gi
 EOF
 
-# add in cluster dns gitlab.vm01 to coredns
-$ k edit cm -n kube-system coredns
-  Corefile: |
-    .:53 {
-        errors
-        health {
-          lameduck 5s
-        }
-        hosts {
-          172.100.100.101 gitlab.vm01 docker.vm01 argocd.vm01
-          fallthrough
-        }
-
-# get runner token from KW-MVN project
-# Settings > CI/CD > Runners > Registration Token
-
-# install gitlab-runner helm chart
-$ helm upgrade -i gitlab-runner -f gitlab-runner/values.yaml gitlab-runner \
-  --set gitlabUrl=https://gitlab.vm01 \
-  --set runnerRegistrationToken=%YOUR-REG-TOKEN-HERE% \
-  --set rbac.create=true \
-  --set certsSecretName=gitlab-runner-tls
+# Gitlab Runner 설치
+$ helm upgrade -i gitlab-runner -f gitlab-runner-values.yaml gitlab/gitlab-runner
 ```  
+---
 
-### 4. install argocd & docker registry
+### 5. Install argocd & docker registry
 
 ```bash
 # install argocd
 $ kubectl create namespace argocd
 $ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-# add argocd ssl-passthrough to nginx ingress
-$ k edit ds -n ingress-nginx nginx-ingress-controller
+# add argocd ssl-passthrough args to ingress-controller
+$ k edit ds -n kube-system rke2-ingress-nginx-controller
 
-# add "--enable-ssl-passthrough" end of containers.args like below
+# add "--enable-ssl-passthrough" at line 53
   - --watch-ingress-without-class=true
   - --enable-ssl-passthrough
+# save and qute (:wq)
 
 # add ingress for argocd
 $ kubectl -n argocd apply -f - <<"EOF"  
@@ -258,7 +335,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
 spec:
   rules:
-  - host: argocd.vm01
+  - host: argocd.kw01
     http:
       paths:
       - path: /
@@ -274,76 +351,142 @@ EOF
 $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
 # add gitlab ca-cert (self-signed)
-- https://argocd.vm01/settings/certs?addTLSCert=true
-- add name gitlab.vm01 & paste gitlab.vm01.crt pem file
+- https://argocd.kw01/settings/certs?addTLSCert=true
+- add name gitlab.kw01 & paste gitlab.kw01.crt pem file
 
-$ cat gitlab.vm01.crt
+$ cat gitlab.kw01.crt
 
 # add argocd app 
+
+$ k exec -it $(k get pods -l app.kubernetes.io/name=argocd-server -o name) bash
+
+# check argocd user id and password
+$ argocd login argocd-server.argocd --insecure --username admin --password e3m7VS-JpcpczVcq
+$ argocd repo add https://gitlab.kw01/argo/kw-mvn-deploy.git --username argo --insecure-skip-server-verification
+# enter gitlab password : abcd!234
+
 $ kubectl -n argocd apply -f - <<"EOF"
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: kw-mvn
-  namespace: argocd
 spec:
   destination:
+    name: ''
     namespace: deploy
-    server: https://kubernetes.default.svc
-  project: default
+    server: 'https://kubernetes.default.svc'
   source:
-    directory:
-      jsonnet: {}
-      recurse: true
     path: .
-    repoURL: https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
+    repoURL: 'https://gitlab.kw01/argo/kw-mvn-deploy.git'
     targetRevision: main
+  sources: []
+  project: default
   syncPolicy:
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
 EOF
 
-# install docker registry
+# Install docker registry
 $ helm repo add twuni https://helm.twun.io
-$ helm upgrade -i docker twuni/docker-registry \
-  --set ingress.enabled=true \
-  --set ingress.hosts[0]=docker.vm01 \
-  --create-namespace -n registry
-  
-# set proxy-body-size of docker.vm02 ingress to 0
-$ kubectl patch ingress docker-docker-registry -p '{"metadata": {"annotations":{"nginx.ingress.kubernetes.io/proxy-body-size":"0"}}}' -n registry
 
-# configure insecure docker registry from vm01
-$ sudo vi /etc/docker/daemon.json
-{
-   "insecure-registries": [ "docker.vm01" ]
-}
+$ cat << EOF >> values.yaml
+service:
+  name: registry
+  type: NodePort
+  port: 5000
+  nodePort: 30005
+persistence:
+  accessMode: 'ReadWriteOnce'
+  enabled: true
+  size: 10Gi
+  storageClass: 'local-path'
+EOF
 
-$ sudo systemctl restart docker
+$ helm install docker-registry -f values.yaml twuni/docker-registry -n registry --create-namespace
 
-$ curl -v docker.vm01/v2/_catalog
-$ docker login docker.vm01 -u admin
+$ export MY_NODE1_IP=10.128.15.217
+$ curl -v $MY_NODE1_IP:30005/v2/_catalog
+
+# nerdctl download
+$ wget https://github.com/containerd/nerdctl/releases/download/v1.3.1/nerdctl-full-1.3.1-linux-amd64.tar.gz
+$ sudo tar Cxzvvf /usr/local nerdctl-full-1.3.1-linux-amd64.tar.gz
+
+# nerdctl 설정
+$ sudo mkdir -p /etc/nerdctl
+$ cat << EOF | sudo tee /etc/nerdctl/nerdctl.toml
+debug          = false
+debug_full     = false
+address        = "unix:///run/k3s/containerd/containerd.sock"
+namespace      = "k8s.io"
+cgroup_manager = "cgroupfs"
+hosts_dir      = ["/etc/containerd/certs.d", "/etc/docker/certs.d"]
+EOF
+
+# admin / 1 로 로그인
+$ sudo nerdctl --insecure-registry login $MY_NODE1_IP:30005 # 노드IP 값으로 변경
+
+# 컨테이너 런타임에 Private Registry 인증 / insecure 설정
+# 레지스트리 주소를 자신의 주소로 변경합니다.
+$ cat << EOF | sudo tee /etc/rancher/rke2/registries.yaml
+mirrors:
+  $MY_NODE1_IP:30005:
+    endpoint:
+      - http://$MY_NODE1_IP:30005
+configs:
+  $MY_NODE1_IP:30005:
+    auth:
+      username: admin 
+      password: 1 
+    tls:
+      insecure_skip_verify: true
+EOF
+
+$ sudo systemctl restart rke2-server
+
+# 워커노드도 동일하게 적용해 줍니다.
+# 워커노드 로그인 후
+
+$ export MY_NODE1_IP=10.128.15.217
+
+$ cat << EOF | sudo tee /etc/rancher/rke2/registries.yaml
+mirrors:
+  $MY_NODE1_IP:30005:
+    endpoint:
+      - http://10.128.15.213:30005
+configs:
+  $MY_NODE1_IP:30005:
+    auth:
+      username: admin 
+      password: 1 
+    tls:
+      insecure_skip_verify: true
+EOF
+
+$ sudo systemctl restart rke2-agent
+
+
+# 아래 파일에 insecure 및 인증 설정 추가 확인 
+$ sudo cat /var/lib/rancher/rke2/agent/etc/containerd/config.toml
 ```
+---
+### 6. Develop build script
 
-### 5. develop build script
+- https://gitlab.kw01/argo/kw-mvn/-/ci/editor?branch_name=main
 
 ```bash
 
-# Create Personal Access Token of User for deploy / Update DEPLOY_REPO_CREDENTIALS
-# Unprotect main branch push from gitlab - https://gitlab.vm01/jaehoon/kw-mvn-deploy.git
-# Update ARGO_USER_PASSWORD with value of kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
-  IMAGE_URL: "docker.vm01/kw-mvn"
-  DEPLOY_REPO_URL: "https://gitlab.vm01/jaehoon/kw-mvn-deploy.git"
-  DEPLOY_REPO_CREDENTIALS: "https://jaehoon:glpat-mFT6GgL_4mvDuTo8Lpmf@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
+  IMAGE_URL: "10.128.15.217:30005/kw-mvn"
+  DEPLOY_REPO_URL: "https://gitlab.kw01/argo/kw-mvn-deploy.git"
+  DEPLOY_REPO_CREDENTIALS: "https://argo:abcd!234@gitlab.kw01/argo/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "admin"
   REGISTRY_USER_PASSWORD: "1"
-  ARGO_URL: "argocd.vm01"
+  ARGO_URL: "argocd-server.argocd"
   ARGO_USER_ID: "admin"
-  ARGO_USER_PASSWORD: "nUBniE6vQv1Sy1JH"
+  ARGO_USER_PASSWORD: "CWJjH2Fb278mmuDx"
   ARGO_APP_NAME: "kw-mvn"
+
 
 stages:
   - maven-jib-build
@@ -364,6 +507,7 @@ maven-jib-build:
         compile \
         com.google.cloud.tools:jib-maven-plugin:build"
     - echo "IMAGE_FULL_NAME=$IMAGE_URL:$COMMIT_TIME-$CI_JOB_ID" >> build.env
+    - echo "NEW_TAG=$IMAGE_URL:$COMMIT_TIME-$CI_JOB_ID" >> build.env
     - cat build.env
   artifacts:
     reports:
@@ -388,13 +532,13 @@ update-yaml:
     - ls -al
 
     - echo "updating image to $IMAGE_FULL_NAME"
-    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_FULL_NAME|" deploy.yml
+    - sed -i "s|$IMAGE_URL:.*$|$IMAGE_FULL_NAME|" deploy.yml
     - cat deploy.yml | grep image
     
-    - git config --global user.email "tekton@tekton.dev"
-    - git config --global user.name "Tekton Pipeline"
+    - git config --global user.email "argo@dev"
+    - git config --global user.name "gitlab-runner"
     - git add .
-    - git commit --allow-empty -m "[tekton] updating image to $IMAGE_FULL_NAME"
+    - git commit --allow-empty -m "[gitlab-runner] updating image to $IMAGE_FULL_NAME"
     - git -c http.sslVerify=false push origin $CI_COMMIT_BRANCH
 
 sync-argocd:
@@ -406,8 +550,5 @@ sync-argocd:
     - argocd app sync $ARGO_APP_NAME --insecure
     - argocd app wait $ARGO_APP_NAME --sync --health --operation --insecure
 ```
-
-### 6. run pipeline
-
-!!!
-
+---
+### 7. Run build pipeline
