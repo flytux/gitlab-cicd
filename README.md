@@ -158,6 +158,9 @@ $ k get -n gitlab secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.
 # Login argo and import projects
 - https://github.com/flytux/kw-mvn : Project Name > KW-MVN
 - https://github.com/flytux/kw-mvn-deploy : Project Name > KW-MVN-DEPLOY
+- main branch > deploy.yml 파일의 이미지 URL을 VM1:30005로 변경합니다.
+- docker.vm01 > 10.128.15.217:30005 로 변경 # VM1 IP:30005
+
 
 # Create CA certs for CA Issuer
 $ openssl genrsa -out ca.key 2048
@@ -211,7 +214,7 @@ EOF
 # Add selfsigned CA crt to gitlab runner via secret
 # add to /etc/hosts 
 cat << EOF | sudo tee -a /etc/hosts
-10.128.15.215 gitlab.kw01
+10.128.15.217 gitlab.kw01
 EOF
 
 $ openssl s_client -showcerts -connect gitlab.kw01:443 -servername gitlab.kw01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.kw01.crt
@@ -529,13 +532,13 @@ update-yaml:
     - ls -al
 
     - echo "updating image to $IMAGE_FULL_NAME"
-    - sed -i "s|docker.vm01/kw-mvn:.*$|$IMAGE_FULL_NAME|" deploy.yml
+    - sed -i "s|$IMAGE_URL:.*$|$IMAGE_FULL_NAME|" deploy.yml
     - cat deploy.yml | grep image
     
-    - git config --global user.email "tekton@tekton.dev"
-    - git config --global user.name "Tekton Pipeline"
+    - git config --global user.email "argo@dev"
+    - git config --global user.name "gitlab-runner"
     - git add .
-    - git commit --allow-empty -m "[tekton] updating image to $IMAGE_FULL_NAME"
+    - git commit --allow-empty -m "[gitlab-runner] updating image to $IMAGE_FULL_NAME"
     - git -c http.sslVerify=false push origin $CI_COMMIT_BRANCH
 
 sync-argocd:
