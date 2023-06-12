@@ -373,9 +373,9 @@ spec:
     namespace: deploy
     server: 'https://kubernetes.default.svc'
   source:
-    path: dev
+    path: .
     repoURL: 'https://gitlab.kw01/argo/kw-mvn-deploy.git'
-    targetRevision: kust
+    targetRevision: main
   sources: []
   project: default
   syncPolicy:
