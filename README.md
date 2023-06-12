@@ -401,6 +401,7 @@ EOF
 
 $ helm install docker-registry -f values.yaml twuni/docker-registry -n registry --create-namespace
 
+$ export MY_NODE1_IP=10.128.15.217
 $ curl -v $MY_NODE1_IP:30005/v2/_catalog
 
 # nerdctl download
@@ -427,7 +428,7 @@ $ cat << EOF | sudo tee /etc/rancher/rke2/registries.yaml
 mirrors:
   $MY_NODE1_IP:30005:
     endpoint:
-      - http://10.128.15.213:30005
+      - http://$MY_NODE1_IP:30005
 configs:
   $MY_NODE1_IP:30005:
     auth:
@@ -441,6 +442,9 @@ $ sudo systemctl restart rke2-server
 
 # 워커노드도 동일하게 적용해 줍니다.
 # 워커노드 로그인 후
+
+$ export MY_NODE1_IP=10.128.15.217
+
 $ cat << EOF | sudo tee /etc/rancher/rke2/registries.yaml
 mirrors:
   $MY_NODE1_IP:30005:
