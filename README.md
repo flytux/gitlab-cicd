@@ -264,7 +264,7 @@ $ k run -it --rm curl --image curlimages/curl -- sh
 # Copy token glrt-wb_BLETYwEdVpP6qCyQX
 
 $ cat << EOF > gitlab-runner-values.yaml
-gitlabUrl: http://gitlab.kw01
+gitlabUrl: https://gitlab.kw01
 
 runnerToken: glrt-wb_BLETYwEdVpP6qCyQX
 rbac:
