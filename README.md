@@ -215,7 +215,8 @@ cat << EOF | sudo tee -a /etc/hosts
 EOF
 
 $ openssl s_client -showcerts -connect gitlab.kw01:443 -servername gitlab.kw01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.kw01.crt
-
+# Custom CA 인증서를 추가합니다.
+$ cat ca.crt >> gitlab.kw01.crt
 $ k create secret generic gitlab-runner-tls --from-file=gitlab.kw01.crt  -n gitlab
 
 # add in cluster dns gitlab.kw01 to coredns
@@ -255,11 +256,11 @@ $ k run -it --rm curl --image curlimages/curl -- sh
 ### 4. Install gitlab-runner
 
 ```bash
-# get runner token from KW-MVN project
+# Setup runner and get runner token from KW-MVN project
 
 # https://gitlab.kw01/argo/kw-mvn/-/runners/new
 
-# Tags > "kw-mvn" > Submit
+# Configuration > Run untagged jobs 체크 > Submit
 # Copy token glrt-wb_BLETYwEdVpP6qCyQX
 
 $ cat << EOF > gitlab-runner-values.yaml
@@ -302,7 +303,6 @@ EOF
 $ helm upgrade -i gitlab-runner -f gitlab-runner-values.yaml gitlab/gitlab-runner
 ```  
 ---
-
 
 ### 4. install argocd & docker registry
 
@@ -351,7 +351,7 @@ $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.p
 - https://argocd.kw01/settings/certs?addTLSCert=true
 - add name gitlab.kw01 & paste gitlab.kw01.crt pem file
 
-$ cat gitlab.vm01.crt
+$ cat gitlab.kw01.crt
 
 # add argocd app 
 
@@ -359,7 +359,7 @@ $ k exec -it $(k get pods -l app.kubernetes.io/name=argocd-server -o name) bash
 
 # check argocd user id and password
 $ argocd login argocd-server.argocd --insecure --username admin --password e3m7VS-JpcpczVcq
-$ argocd repo add http://gitlab-webservice-default.gitlab:8181/argo/kw-mvn-deploy.git --username argo --insecure-skip-server-verification
+$ argocd repo add http://gitlab.kw01/argo/kw-mvn-deploy.git --username argo --insecure-skip-server-verification
 # enter gitlab password : abcd!234
 
 $ kubectl -n argocd apply -f - <<"EOF"
@@ -374,7 +374,7 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: dev
-    repoURL: 'http://gitlab-webservice-default.gitlab:8181/argo/kw-mvn-deploy.git'
+    repoURL: 'https://gitlab.kw01/argo/kw-mvn-deploy.git'
     targetRevision: kust
   sources: []
   project: default
@@ -471,7 +471,7 @@ $ sudo cat /var/lib/rancher/rke2/agent/etc/containerd/config.toml
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
   IMAGE_URL: "10.128.15.213:30005/kw-mvn"
-  DEPLOY_REPO_URL: "http://gitlab-webservice-default.gitlab:8181/argo/kw-mvn-deploy.git"
+  DEPLOY_REPO_URL: "https://gitlab.kw01/argo/kw-mvn-deploy.git"
   DEPLOY_REPO_CREDENTIALS: "https://argo:abcd!234@gitlab.vm01/jaehoon/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "admin"
   REGISTRY_USER_PASSWORD: "1"
