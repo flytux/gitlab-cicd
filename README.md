@@ -385,7 +385,6 @@ EOF
 
 # Install docker registry
 $ helm repo add twuni https://helm.twun.io
-$ helm fetch twuni/docker-registry
 
 $ cat << EOF >> values.yaml
 service:
@@ -400,7 +399,7 @@ persistence:
   storageClass: 'local-path'
 EOF
 
-$ helm install docker-registry -f values.yaml docker-registry-2.2.2.tgz -n registry --create-namespace
+$ helm install docker-registry -f values.yaml twuni/docker-registry -n registry --create-namespace
 
 $ curl -v $MY_NODE1_IP:30005/v2/_catalog
 
