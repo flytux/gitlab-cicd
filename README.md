@@ -304,7 +304,7 @@ $ helm upgrade -i gitlab-runner -f gitlab-runner-values.yaml gitlab/gitlab-runne
 ```  
 ---
 
-### 4. install argocd & docker registry
+### 5. Install argocd & docker registry
 
 ```bash
 # install argocd
@@ -461,8 +461,9 @@ $ sudo systemctl restart rke2-agent
 
 # 아래 파일에 insecure 및 인증 설정 추가 확인 
 $ sudo cat /var/lib/rancher/rke2/agent/etc/containerd/config.toml
-
-### 5. develop build script
+```
+---
+### 6. Develop build script
 
 - https://gitlab.kw01/argo/kw-mvn/-/ci/editor?branch_name=main
 
@@ -543,8 +544,5 @@ sync-argocd:
     - argocd app sync $ARGO_APP_NAME --insecure
     - argocd app wait $ARGO_APP_NAME --sync --health --operation --insecure
 ```
-
-### 6. run pipeline
-
-!!!
-
+---
+### 7. Run build pipeline
