@@ -358,6 +358,7 @@ $ cat gitlab.kw01.crt
 
 # add argocd app 
 
+$ kn argocd
 $ k exec -it $(k get pods -l app.kubernetes.io/name=argocd-server -o name) bash
 
 # check argocd user id and password
