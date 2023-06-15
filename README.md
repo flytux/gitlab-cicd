@@ -92,6 +92,15 @@ $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bas
 $ source ~/.bashrc
 
 $ k get nodes -o wide
+
+# Ingress ssl passthrough 설정
+$ k edit ds -n kube-system rke2-ingress-nginx-controller
+
+# add "--enable-ssl-passthrough" at line 53
+  - --watch-ingress-without-class=true
+  - --enable-ssl-passthrough
+# save and qute (:wq)
+
 ```
 
 ### 2. Install rancher
@@ -314,6 +323,7 @@ $ helm upgrade -i gitlab-runner -f gitlab-runner-values.yaml gitlab/gitlab-runne
 $ kubectl create namespace argocd
 $ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
+# 앞에서 설정한 경우 Skip
 # add argocd ssl-passthrough args to ingress-controller
 $ k edit ds -n kube-system rke2-ingress-nginx-controller
 
