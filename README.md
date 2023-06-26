@@ -45,7 +45,7 @@ $ mkdir -p /etc/rancher/rke2/
 
 # Ediit master node IP and master node token to join
 $ cat << EOF >> /etc/rancher/rke2/config.yaml
-server: https://10.128.15.213:9345 # VM1 private IP 
+server: https://10.128.0.5:9345 # VM1 private IP 
 token: K107a5ebf3e93c0ce43b8c83be33eebd556470ba242dd471e393bf51415e63d4590::server:4e597066002aae1dc9770aa81a38104a
 EOF
 
@@ -168,7 +168,7 @@ $ k get -n gitlab secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.
 - https://github.com/flytux/kw-mvn : Project Name > KW-MVN
 - https://github.com/flytux/kw-mvn-deploy : Project Name > KW-MVN-DEPLOY
 - main branch > deploy.yml 파일의 이미지 URL을 VM1:30005로 변경합니다.
-- docker.vm01 > 10.128.15.217:30005 로 변경 # VM1 IP:30005
+- docker.vm01 > 10.128.0.5:30005 로 변경 # VM1 IP:30005
 
 
 # Create CA certs for CA Issuer
@@ -223,7 +223,7 @@ EOF
 # Add selfsigned CA crt to gitlab runner via secret
 # add to /etc/hosts 
 cat << EOF | sudo tee -a /etc/hosts
-10.128.15.217 gitlab.kw01
+10.128.0.5 gitlab.kw01
 EOF
 
 $ openssl s_client -showcerts -connect gitlab.kw01:443 -servername gitlab.kw01 < /dev/null 2>/dev/null | openssl x509 -outform PEM > gitlab.kw01.crt
@@ -242,7 +242,7 @@ data:
             lameduck 5s
         }
      hosts {
-     10.128.15.215 gitlab.kw01
+     10.128.0.5 gitlab.kw01
      fallthrough
      }
      ready
@@ -415,7 +415,7 @@ EOF
 
 $ helm install docker-registry -f values.yaml twuni/docker-registry -n registry --create-namespace
 
-$ export MY_NODE1_IP=10.128.15.217
+$ export MY_NODE1_IP=10.128.0.5
 $ curl -v $MY_NODE1_IP:30005/v2/_catalog
 
 # nerdctl download
@@ -457,13 +457,13 @@ $ sudo systemctl restart rke2-server
 # 워커노드도 동일하게 적용해 줍니다.
 # 워커노드 로그인 후
 
-$ export MY_NODE1_IP=10.128.15.217
+$ export MY_NODE1_IP=10.128.0.5
 
 $ cat << EOF | sudo tee /etc/rancher/rke2/registries.yaml
 mirrors:
   $MY_NODE1_IP:30005:
     endpoint:
-      - http://10.128.15.213:30005
+      - http://10.128.0.5:30005
 configs:
   $MY_NODE1_IP:30005:
     auth:
@@ -488,7 +488,7 @@ $ sudo cat /var/lib/rancher/rke2/agent/etc/containerd/config.toml
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=/cache/maven.repository"
-  IMAGE_URL: "10.128.15.217:30005/kw-mvn"
+  IMAGE_URL: "10.128.0.5:30005/kw-mvn"
   DEPLOY_REPO_URL: "https://gitlab.kw01/argo/kw-mvn-deploy.git"
   DEPLOY_REPO_CREDENTIALS: "https://argo:abcd!234@gitlab.kw01/argo/kw-mvn-deploy.git"
   REGISTRY_USER_ID: "admin"
