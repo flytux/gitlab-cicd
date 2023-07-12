@@ -82,6 +82,8 @@ alias kc='kubectl config use-context'
 alias kcg='kubectl config get-contexts'
 alias di='docker images --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedSince}}"'
 alias kge="kubectl get events  --sort-by='.metadata.creationTimestamp'  -o 'go-template={{range .items}}{{.involvedObject.name}}{{\"\t\"}}{{.involvedObject.kind}}{{\"\t\"}}{{.message}}{{\"\t\"}}{{.reason}}{{\"\t\"}}{{.type}}{{\"\t\"}}{{.firstTimestamp}}{{\"\n\"}}{{end}}'"
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=black,bold'
 EOF
 
 # Install kubectl / helm
