@@ -153,6 +153,46 @@ $ helm upgrade -i gitlab gitlab/gitlab \
 --set prometheus.install=false \
 -n gitlab --create-namespace
 
+$ cat << EOF >> gitlab-values.yaml
+global:
+  edition: ce
+  gitlabVersion: "16.2.0"
+  hosts:
+    domain: kw01
+    hostSuffix: gitlab
+  ingress:
+    configureCertmanager: false
+    class: nginx
+  appConfig:
+    lfs:
+      enabled: false
+    artifacts:
+      enabled: false
+    uploads:
+      enabled: false
+    packages:
+      enabled: false
+    backups:
+      bucket: gitlab-backups
+      tmpBucket: tmp
+    registry:
+      replication:
+        enabled: false
+  kas:
+    enabled: false
+  registry:
+    enabled: false  
+  time_zone: Asia/Seoul
+nginx-ingress:
+  enabled: false
+prometheus:
+  install: false
+gitlab-runner:
+  install: false
+EOF
+
+$ helm upgrade -i gitlab -f gitlab-values.yaml gitlab-7.2.0.tgz -n gitlab --create-namespace
+
 # get root initial password
 $ k get -n gitlab secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 -d
 
