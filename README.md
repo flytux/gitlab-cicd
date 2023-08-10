@@ -90,6 +90,8 @@ EOF
 $ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 $ chmod 755 kubectl && sudo mv kubectl /usr/local/bin
 $ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+$ wget https://github.com/derailed/k9s/releases/download/v0.27.4/k9s_Linux_amd64.tar.gz
+$ tar xvf k9s_Linux_amd64.tar.gz && chmod +x k9s && sudo mv k9s /usr/local/bin
 
 $ source ~/.bashrc
 
